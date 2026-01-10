@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     jworg_base_url: str = "https://www.jw.org"
     jworg_home_url: str = "https://www.jw.org/en/"
     wol_base_url: str = "https://wol.jw.org"
+    cdn_base_url: str = "https://b.jw-cdn.org"
 
     # Cache settings
     cache_ttl_seconds: int = 900  # 15 minutes

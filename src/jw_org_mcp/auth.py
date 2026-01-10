@@ -1,14 +1,13 @@
 """Authentication and CDN discovery for JW.Org API."""
 
 import logging
-import re
 import uuid
 from datetime import UTC, datetime, timedelta
 
 import httpx
 
 from .config import settings
-from .exceptions import AuthenticationError, CDNDiscoveryError
+from .exceptions import AuthenticationError
 from .models import CDNInfo, JWTToken
 
 logger = logging.getLogger(__name__)
@@ -56,44 +55,22 @@ class AuthManager:
         return self._http_client
 
     async def discover_cdn(self) -> CDNInfo:
-        """Discover the CDN base URL from jw.org homepage.
+        """Get the CDN base URL.
+
+        Uses the configured CDN URL directly since the jw.org homepage
+        no longer contains discoverable jw-cdn.org references.
 
         Returns:
             CDNInfo object with CDN base URL
-
-        Raises:
-            CDNDiscoveryError: If CDN discovery fails
         """
         if self._cdn_info is not None:
             return self._cdn_info
 
-        try:
-            client = await self._get_http_client()
-            logger.info(f"Discovering CDN from {settings.jworg_home_url}")
-
-            response = await client.get(settings.jworg_home_url)
-            response.raise_for_status()
-
-            # Look for CDN URL pattern: *.jw-cdn.org
-            cdn_pattern = r"https?://([a-z0-9-]+\.jw-cdn\.org)"
-            matches = re.findall(cdn_pattern, response.text)
-
-            if not matches:
-                raise CDNDiscoveryError("Could not find CDN URL in jw.org homepage")
-
-            # Use the first match
-            cdn_url = f"https://{matches[0]}"
-            self._cdn_info = CDNInfo(base_url=cdn_url, discovered_at=datetime.now(UTC))
-
-            logger.info(f"Discovered CDN: {cdn_url}")
-            return self._cdn_info
-
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP error during CDN discovery: {e}")
-            raise CDNDiscoveryError(f"Failed to discover CDN: {e}") from e
-        except Exception as e:
-            logger.error(f"Unexpected error during CDN discovery: {e}")
-            raise CDNDiscoveryError(f"Unexpected error during CDN discovery: {e}") from e
+        self._cdn_info = CDNInfo(
+            base_url=settings.cdn_base_url, discovered_at=datetime.now(UTC)
+        )
+        logger.info(f"Using CDN: {settings.cdn_base_url}")
+        return self._cdn_info
 
     async def get_jwt_token(self, force_refresh: bool = False) -> str:
         """Get JWT token, refreshing if necessary.
